@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Knowledge Base Query</title>
+    <style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+    }
+
+    .container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        backdrop-filter: blur(10px);
+    }
+
+    .header {
+        background: linear-gradient(135deg, #4a90e2, #357abd);
+        color: white;
+        padding: 30px;
+        text-align: center;
+    }
+
+    .header h1 {
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+        font-weight: 700;
+    }
+
+    .header p {
+        font-size: 1.1rem;
+        opacity: 0.9;
+    }
+
+    .form-container {
+        padding: 40px;
+    }
+
+    .choice-section, .question-section {
+        margin-bottom: 30px;
+    }
+
+    .choice-section label,
+    .question-section label {
+        display: block;
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 15px;
+    }
+
+    .radio-group {
+        display: flex;
+        gap: 20px;
+        justify-content: center;
+        margin-bottom: 20px;
+    }
+
+    .radio-option {
+        display: flex;
+        align-items: center;
+        background: #f8f9fa;
+        padding: 12px 20px;
+        border-radius: 15px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+        min-width: 140px;
+        justify-content: center;
+        flex: 1;
+        max-width: 200px;
+    }
+
+    .radio-option:hover {
+        background: #e9ecef;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .radio-option input[type="radio"] {
+        margin-right: 10px;
+        scale: 1.2;
+    }
+
+    .radio-option.selected {
+        background: linear-gradient(135deg, #4a90e2, #357abd);
+        color: white;
+        border-color: #357abd;
+    }
+
+    .question-input {
+        width: 100%;
+        padding: 15px;
+        border: 2px solid #ddd;
+        border-radius: 15px;
+        font-size: 1rem;
+        resize: vertical;
+        min-height: 120px;
+        transition: border-color 0.3s ease;
+        font-family: inherit;
+    }
+
+    .question-input:focus {
+        outline: none;
+        border-color: #4a90e2;
+        box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+    }
+
+    .submit-btn {
+        width: 100%;
+        background: linear-gradient(135deg, #4a90e2, #357abd);
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        border-radius: 15px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .submit-btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(74, 144, 226, 0.3);
+    }
+
+    .submit-btn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+    }
+
+    .loading {
+        display: none;
+        text-align: center;
+        margin: 20px 0;
+    }
+
+    .loading.show {
+        display: block;
+    }
+
+    .spinner {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #4a90e2;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 10px;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* ====== Response Section Styling ====== */
+    .result-container {
+        display: none;
+        margin-top: 30px;
+        padding: 25px;
+        background: linear-gradient(145deg, #f8f9fa, #e9ecef);
+        border-radius: 20px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .result-container.show {
+        display: block;
+    }
+
+    .result-header {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #222;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .result-header::before {
+        content: "💡";
+        font-size: 1.8rem;
+    }
+
+    .answer {
+        background: white;
+        padding: 25px;
+        border-radius: 15px;
+        margin-bottom: 25px;
+        line-height: 1.7;
+        font-size: 1.05rem;
+        color: #333;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.07);
+        border-left: 5px solid #4a90e2;
+        transition: transform 0.2s ease;
+    }
+
+    .answer:hover {
+        transform: translateY(-2px);
+    }
+
+    .sources {
+        background: #f1f3f5;
+        padding: 20px;
+        border-radius: 15px;
+        box-shadow: inset 0 0 8px rgba(0,0,0,0.03);
+    }
+
+    .sources h4 {
+        color: #555;
+        margin-bottom: 15px;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+
+    .source-item {
+        background: white;
+        padding: 12px 18px;
+        border-radius: 12px;
+        margin-bottom: 10px;
+        font-size: 0.95rem;
+        color: #555;
+        border-left: 4px solid #4a90e2;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .source-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+
+    /* ====== Fade-in Animation ====== */
+    .fade-in {
+        animation: fadeIn 0.5s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 600px) {
+        .radio-group {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .radio-option {
+            width: 100%;
+            max-width: 200px;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+        }
+
+        .form-container {
+            padding: 20px;
+        }
+    }
+</style>
+
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>RAG Knowledge Base</h1>
+            <p>Ask questions about Machine Learning or Full Stack Development</p>
+        </div>
+
+        <div class="form-container">
+            <form id="queryForm">
+                <div class="choice-section">
+                    <label>Choose Knowledge Base:</label>
+                    <div class="radio-group">
+                        <div class="radio-option" data-choice="ML">
+                            <input type="radio" name="choice" value="ML" id="ml-choice">
+                            <label for="ml-choice">Machine Learning</label>
+                        </div>
+                        <div class="radio-option" data-choice="FSD">
+                            <input type="radio" name="choice" value="FSD" id="fsd-choice">
+                            <label for="fsd-choice">Full Stack Development</label>
+                        </div>
+                        <div class="radio-option" data-choice="APP">
+                            <input type="radio" name="choice" value="APP" id="app-choice">
+                            <label for="app-choice">App Development</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question-section">
+                    <label for="question">Your Question:</label>
+                    <textarea
+                        id="question"
+                        name="question"
+                        class="question-input"
+                        placeholder="Enter your question about ML or FSD here..."
+                        required
+                    ></textarea>
+                </div>
+
+                <button type="submit" class="submit-btn" id="submitBtn">
+                    Ask Question
+                </button>
+            </form>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Processing your question...</p>
+            </div>
+
+            <div class="result-container" id="resultContainer">
+                <div class="result-header">Answer</div>
+                <div class="answer" id="answer"></div>
+                <div class="sources" id="sources">
+                    <h4>Sources:</h4>
+                    <div id="sourceList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Handle radio button selection styling
+        document.querySelectorAll('.radio-option').forEach(option => {
+            option.addEventListener('click', function() {
+                // Remove selected class from all options
+                document.querySelectorAll('.radio-option').forEach(opt => {
+                    opt.classList.remove('selected');
+                });
+
+                // Add selected class to clicked option
+                this.classList.add('selected');
+
+                // Check the radio button
+                const radio = this.querySelector('input[type="radio"]');
+                radio.checked = true;
+            });
+        });
+
+        // Handle form submission
+        document.getElementById('queryForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const question = formData.get('question').trim();
+            const choice = formData.get('choice');
+
+            // Validation
+            if (!question) {
+                alert('Please enter a question.');
+                return;
+            }
+
+            if (!choice) {
+                alert('Please select a knowledge base (ML or FSD).');
+                return;
+            }
+
+            // Show loading state
+            const submitBtn = document.getElementById('submitBtn');
+            const loading = document.getElementById('loading');
+            const resultContainer = document.getElementById('resultContainer');
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Processing...';
+            loading.classList.add('show');
+            resultContainer.classList.remove('show');
+
+            try {
+                const response = await fetch('/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        question: question,
+                        choice: choice
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    displayResult(data);
+                } else {
+                    displayError(data.error || 'An error occurred');
+                }
+
+            } catch (error) {
+                displayError('Network error: ' + error.message);
+            } finally {
+                // Reset loading state
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Ask Question';
+                loading.classList.remove('show');
+            }
+        });
+
+        function displayResult(data) {
+            const resultContainer = document.getElementById('resultContainer');
+            const answerDiv = document.getElementById('answer');
+            const sourceList = document.getElementById('sourceList');
+
+            // Display answer
+            answerDiv.textContent = data.answer;
+
+            // Display sources
+            sourceList.innerHTML = '';
+            if (data.sources && data.sources.length > 0) {
+                data.sources.forEach(source => {
+                    const sourceItem = document.createElement('div');
+                    sourceItem.className = 'source-item';
+                    sourceItem.textContent = source.page ?
+                        `${source.source} (page ${source.page})` :
+                        source.source;
+                    sourceList.appendChild(sourceItem);
+                });
+            } else {
+                sourceList.innerHTML = '<div class="source-item">No sources available</div>';
+            }
+
+            // Show result with animation
+            resultContainer.classList.add('show', 'fade-in');
+            resultContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function displayError(message) {
+            const resultContainer = document.getElementById('resultContainer');
+            const answerDiv = document.getElementById('answer');
+            const sourceList = document.getElementById('sourceList');
+
+            answerDiv.innerHTML = `<div class="error">${message}</div>`;
+            sourceList.innerHTML = '';
+
+            resultContainer.classList.add('show', 'fade-in');
+            resultContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
